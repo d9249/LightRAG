@@ -6,6 +6,9 @@ __pycache__/
 *.tgz
 *.tar.gz
 *.ini
+.qoder/
+lightrag_env/
+node_modules/
 
 # Virtual Environment
 .venv/
