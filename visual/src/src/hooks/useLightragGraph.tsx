@@ -1,7 +1,7 @@
 import Graph, { UndirectedGraph } from 'graphology'
 import { useCallback, useEffect, useRef } from 'react'
 import * as Constants from '@/lib/constants'
-import { useGraphStore, RawGraph, RawNodeType, RawEdgeType } from '@/stores/graph'
+import { useGraphStore, RawGraph } from '@/stores/graph'
 import seedrandom from 'seedrandom'
 
 const TYPE_SYNONYMS: Record<string, string> = {
@@ -163,19 +163,71 @@ export type EdgeType = {
   hidden?: boolean
 }
 
-// 간단한 로컬 데이터 로드 함수
-const loadLocalGraphData = async () => {
+// 사용 가능한 데이터셋 목록을 가져오는 함수
+const getAvailableDatasets = async (): Promise<string[]> => {
   try {
+    const datasets: string[] = []
+    
+    // 기본 데이터셋 체크
+    try {
+      const defaultResponse = await fetch('./data/kv_store_full_entities.json')
+      if (defaultResponse.ok) {
+        datasets.push('Default')
+      }
+    } catch (error) {
+      console.log('Default dataset not available')
+    }
+    
+    // 알려진 데이터셋들을 체크하고 더 많은 데이터셋을 자동으로 감지
+    const possibleDatasets = [
+      'ABL', 'BBL', 'CCL', 'DDL', 'EEL', // 기존 + 추가 가능한 데이터셋들
+      'dataset1', 'dataset2', 'dataset3', // 일반적인 이름들
+      'test', 'demo', 'sample', 'example' // 테스트용 데이터셋들
+    ]
+    
+    // 병렬로 모든 데이터셋 체크
+    const checkPromises = possibleDatasets.map(async (dataset) => {
+      try {
+        const testResponse = await fetch(`./data/${dataset}/kv_store_full_entities.json`)
+        if (testResponse.ok) {
+          return dataset
+        }
+      } catch (error) {
+        // 무시 - 데이터셋이 존재하지 않음
+      }
+      return null
+    })
+    
+    const results = await Promise.all(checkPromises)
+    const foundDatasets = results.filter((dataset): dataset is string => dataset !== null)
+    
+    // 중복 제거하고 정렬
+    const allDatasets = [...new Set([...datasets, ...foundDatasets])]
+    
+    console.log('Found datasets:', allDatasets)
+    return allDatasets
+  } catch (error) {
+    console.error('Error getting available datasets:', error)
+    return []
+  }
+}
+
+// 간단한 로컬 데이터 로드 함수 (데이터셋 지정 가능)
+const loadLocalGraphData = async (dataset?: string) => {
+  try {
+    // 데이터셋에 따른 경로 설정
+    const basePath = dataset && dataset !== 'Default' ? `./data/${dataset}` : './data'
+    
     // 로컬 파일 로드
-    const entitiesResponse = await fetch('./data/kv_store_full_entities.json')
-    const relationsResponse = await fetch('./data/kv_store_full_relations.json')
+    const entitiesResponse = await fetch(`${basePath}/kv_store_full_entities.json`)
+    const relationsResponse = await fetch(`${basePath}/kv_store_full_relations.json`)
     
     const entitiesData = await entitiesResponse.json()
     const relationsData = await relationsResponse.json()
     
     // 엔티티 수집
     const allEntities = new Set<string>()
-    for (const [docId, docData] of Object.entries(entitiesData)) {
+    for (const [, docData] of Object.entries(entitiesData)) {
       if (typeof docData === 'object' && docData && 'entity_names' in docData) {
         const entityNames = (docData as any).entity_names
         if (Array.isArray(entityNames)) {
@@ -190,7 +242,7 @@ const loadLocalGraphData = async () => {
     
     // 관계 수집
     const allRelations: [string, string][] = []
-    for (const [docId, docData] of Object.entries(relationsData)) {
+    for (const [, docData] of Object.entries(relationsData)) {
       if (typeof docData === 'object' && docData && 'relation_pairs' in docData) {
         const pairs = (docData as any).relation_pairs
         if (Array.isArray(pairs)) {
@@ -315,9 +367,13 @@ const useLightragGraph = () => {
   const rawGraph = useGraphStore.use.rawGraph()
   const sigmaGraph = useGraphStore.use.sigmaGraph()
   const isFetching = useGraphStore.use.isFetching()
+  const selectedDataset = useGraphStore.use.selectedDataset()
+  const availableDatasets = useGraphStore.use.availableDatasets()
+  const isLoadingDatasets = useGraphStore.use.isLoadingDatasets()
 
   // Use ref to track if data has been loaded
   const dataLoadedRef = useRef(false)
+  const lastLoadedDatasetRef = useRef<string | null>(null)
 
   const getNode = useCallback(
     (nodeId: string) => {
@@ -333,15 +389,37 @@ const useLightragGraph = () => {
     [rawGraph]
   )
 
-  // Graph data loading logic
+  // 데이터셋 목록 로드
   useEffect(() => {
-    if (!isFetching && !dataLoadedRef.current) {
+    if (availableDatasets.length === 0 && !isLoadingDatasets) {
+      const state = useGraphStore.getState()
+      state.setIsLoadingDatasets(true)
+      
+      getAvailableDatasets().then((datasets) => {
+        state.setAvailableDatasets(datasets)
+        state.setIsLoadingDatasets(false)
+        
+        // 첫 번째 데이터셋을 기본으로 선택 (사용자가 선택하지 않은 경우)
+        if (datasets.length > 0 && !selectedDataset) {
+          state.setSelectedDataset(datasets[0])
+        }
+      }).catch((error) => {
+        console.error('Error loading datasets:', error)
+        state.setIsLoadingDatasets(false)
+      })
+    }
+  }, [availableDatasets.length, isLoadingDatasets, selectedDataset])
+
+  // Graph data loading logic - 선택된 데이터셋이 변경되거나 처음 로드할 때
+  useEffect(() => {
+    if (!isFetching && selectedDataset && 
+        (lastLoadedDatasetRef.current !== selectedDataset || !dataLoadedRef.current)) {
       const state = useGraphStore.getState()
       state.setIsFetching(true)
 
-      console.log('Loading local graph data...')
+      console.log(`Loading graph data for dataset: ${selectedDataset}`)
 
-      loadLocalGraphData().then((rawData) => {
+      loadLocalGraphData(selectedDataset).then((rawData) => {
         if (!rawData || !rawData.nodes || !rawData.nodes.length) {
           state.setIsFetching(false)
           state.setGraphIsEmpty(true)
@@ -404,15 +482,16 @@ const useLightragGraph = () => {
         state.setGraphIsEmpty(false)
         state.setIsFetching(false)
 
-        console.log('Graph loaded:', { nodes: rawData.nodes.length, edges: rawData.edges.length })
+        console.log(`Graph loaded for ${selectedDataset}:`, { nodes: rawData.nodes.length, edges: rawData.edges.length })
         dataLoadedRef.current = true
+        lastLoadedDatasetRef.current = selectedDataset
       }).catch((error) => {
         console.error('Error loading graph data:', error)
         state.setIsFetching(false)
         state.setGraphIsEmpty(true)
       })
     }
-  }, [isFetching])
+  }, [isFetching, selectedDataset])
 
   const lightragGraph = useCallback(() => {
     // If we already have a graph instance, return it
@@ -427,7 +506,26 @@ const useLightragGraph = () => {
     return graph as Graph<NodeType, EdgeType>
   }, [sigmaGraph])
 
-  return { lightragGraph, getNode, getEdge }
+  // 데이터셋 선택 함수
+  const selectDataset = useCallback((dataset: string) => {
+    const state = useGraphStore.getState()
+    state.setSelectedDataset(dataset)
+    // 그래프 상태 초기화
+    state.setRawGraph(null)
+    state.setSigmaGraph(null)
+    dataLoadedRef.current = false
+  }, [])
+
+  return { 
+    lightragGraph, 
+    getNode, 
+    getEdge, 
+    availableDatasets, 
+    selectedDataset, 
+    isLoadingDatasets, 
+    selectDataset,
+    getAvailableDatasets
+  }
 }
 
 export default useLightragGraph

@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import GraphViewer from '@/features/GraphViewer'
-import useLightragGraph from '@/hooks/useLightragGraph'
 
 // 스타일 추가
 const globalStyles = `
@@ -29,9 +28,6 @@ const globalStyles = `
 `
 
 function App() {
-  // Initialize graph data loading
-  const { lightragGraph } = useLightragGraph()
-
   useEffect(() => {
     // Add global styles
     const styleSheet = document.createElement('style')
@@ -42,11 +38,6 @@ function App() {
       document.head.removeChild(styleSheet)
     }
   }, [])
-
-  useEffect(() => {
-    // Initialize graph
-    lightragGraph()
-  }, [lightragGraph])
 
   return (
     <div style={{ height: '100vh', width: '100vw' }}>

@@ -75,6 +75,11 @@ interface GraphState {
 
   typeColorMap: Map<string, string>
 
+  // 데이터셋 관련 상태
+  availableDatasets: string[]
+  selectedDataset: string | null
+  isLoadingDatasets: boolean
+
   setSigmaInstance: (instance: any) => void
   setSelectedNode: (nodeId: string | null, moveToSelectedNode?: boolean) => void
   setFocusedNode: (nodeId: string | null) => void
@@ -96,6 +101,11 @@ interface GraphState {
   resetSearchEngine: () => void
 
   setTypeColorMap: (typeColorMap: Map<string, string>) => void
+
+  // 데이터셋 관련 액션
+  setAvailableDatasets: (datasets: string[]) => void
+  setSelectedDataset: (dataset: string | null) => void
+  setIsLoadingDatasets: (isLoading: boolean) => void
 }
 
 const useGraphStoreBase = create<GraphState>()((set, get) => ({
@@ -117,6 +127,11 @@ const useGraphStoreBase = create<GraphState>()((set, get) => ({
   typeColorMap: new Map<string, string>(),
 
   searchEngine: null,
+
+  // 데이터셋 관련 초기 상태
+  availableDatasets: [],
+  selectedDataset: null,
+  isLoadingDatasets: false,
 
   setGraphIsEmpty: (isEmpty: boolean) => set({ graphIsEmpty: isEmpty }),
   setLastSuccessfulQueryLabel: (label: string) => set({ lastSuccessfulQueryLabel: label }),
@@ -167,6 +182,11 @@ const useGraphStoreBase = create<GraphState>()((set, get) => ({
 
   setSearchEngine: (engine: MiniSearch | null) => set({ searchEngine: engine }),
   resetSearchEngine: () => set({ searchEngine: null }),
+
+  // 데이터셋 관련 액션 구현
+  setAvailableDatasets: (datasets: string[]) => set({ availableDatasets: datasets }),
+  setSelectedDataset: (dataset: string | null) => set({ selectedDataset: dataset }),
+  setIsLoadingDatasets: (isLoading: boolean) => set({ isLoadingDatasets: isLoading }),
 }))
 
 const useGraphStore = createSelectors(useGraphStoreBase)

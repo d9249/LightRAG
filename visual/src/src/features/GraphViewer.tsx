@@ -6,8 +6,10 @@ import { NodeBorderProgram } from '@sigma/node-border'
 import { EdgeCurvedArrowProgram, createEdgeCurveProgram } from '@sigma/edge-curve'
 
 import GraphControl from '@/components/graph/GraphControl'
+import DatasetSelector from '@/components/DatasetSelector'
 
 import { useGraphStore } from '@/stores/graph'
+import useLightragGraph from '@/hooks/useLightragGraph'
 
 import '@react-sigma/core/lib/style.css'
 
@@ -97,6 +99,14 @@ const GraphViewer = () => {
   const moveToSelectedNode = useGraphStore.use.moveToSelectedNode()
   const isFetching = useGraphStore.use.isFetching()
 
+  // 데이터셋 관련 상태와 함수들
+  const { 
+    availableDatasets, 
+    selectedDataset, 
+    isLoadingDatasets, 
+    selectDataset 
+  } = useLightragGraph()
+
   // Initialize sigma settings once on component mount
   useEffect(() => {
     setSigmaSettings(defaultSigmaSettings)
@@ -131,6 +141,14 @@ const GraphViewer = () => {
       >
         <GraphControl />
         <GraphEvents />
+
+        {/* 데이터셋 선택기 */}
+        <DatasetSelector
+          availableDatasets={availableDatasets}
+          selectedDataset={selectedDataset}
+          isLoadingDatasets={isLoadingDatasets}
+          onSelectDataset={selectDataset}
+        />
 
         {/* Basic controls */}
         <div style={{
