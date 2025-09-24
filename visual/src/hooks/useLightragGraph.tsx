@@ -219,64 +219,47 @@ export type EdgeType = {
   hidden?: boolean
 }
 
-// 사용 가능한 데이터셋 목록을 가져오는 함수
+// datasets.json에서만 데이터셋 목록 로드 (fallback 없음)
 const getAvailableDatasets = async (): Promise<string[]> => {
   try {
-    const datasets: string[] = []
+    console.log('🔍 Loading datasets from datasets.json...')
     
-    // 기본 데이터셋 체크
-    try {
-      const defaultResponse = await fetch('./data/kv_store_full_entities.json')
-      if (defaultResponse.ok) {
-        datasets.push('Default')
-      }
-    } catch (error) {
-      console.log('Default dataset not available')
+    // 생성된 datasets.json 파일에서만 목록 로드
+    const datasetsResponse = await fetch('./datasets.json')
+    if (!datasetsResponse.ok) {
+      throw new Error('datasets.json not found')
     }
     
-    // 알려진 데이터셋들을 체크하고 더 많은 데이터셋을 자동으로 감지
-    const possibleDatasets = [
-      'ABL', 'BBL', 'CCL', 'DDL', 'EEL', // 기존 + 추가 가능한 데이터셋들
-      'dataset1', 'dataset2', 'dataset3', // 일반적인 이름들
-      'test', 'demo', 'sample', 'example' // 테스트용 데이터셋들
-    ]
+    const datasetsInfo = await datasetsResponse.json()
+    const datasets = datasetsInfo.datasets || []
     
-    // 병렬로 모든 데이터셋 체크
-    const checkPromises = possibleDatasets.map(async (dataset) => {
-      try {
-        const testResponse = await fetch(`./data/${dataset}/kv_store_full_entities.json`)
-        if (testResponse.ok) {
-          return dataset
-        }
-      } catch (error) {
-        // 무시 - 데이터셋이 존재하지 않음
-      }
-      return null
-    })
-    
-    const results = await Promise.all(checkPromises)
-    const foundDatasets = results.filter((dataset): dataset is string => dataset !== null)
-    
-    // 중복 제거하고 정렬
-    const allDatasets = [...new Set([...datasets, ...foundDatasets])]
-    
-    console.log('Found datasets:', allDatasets)
-    return allDatasets
+    console.log(`✅ Found ${datasets.length} datasets:`, datasets)
+    return datasets
   } catch (error) {
-    console.error('Error getting available datasets:', error)
+    console.error('❌ Error loading datasets.json:', error)
+    // 최소한의 기본값만 반환
     return []
   }
 }
 
-// 간단한 로컬 데이터 로드 함수 (데이터셋 지정 가능)
-const loadLocalGraphData = async (dataset?: string) => {
+// 선택된 데이터셋 로드 함수
+const loadLocalGraphData = async (selectedDataset: string = 'ABL') => {
   try {
-    // 데이터셋에 따른 경로 설정
-    const basePath = dataset && dataset !== 'Default' ? `./data/${dataset}` : './data'
+    console.log(`🔄 Loading dataset: ${selectedDataset}`)
     
-    // 로컬 파일 로드
-    const entitiesResponse = await fetch(`${basePath}/kv_store_full_entities.json`)
-    const relationsResponse = await fetch(`${basePath}/kv_store_full_relations.json`)
+    // 선택된 데이터셋 경로
+    const entitiesResponse = await fetch(`./data/${selectedDataset}/kv_store_full_entities.json`)
+    const relationsResponse = await fetch(`./data/${selectedDataset}/kv_store_full_relations.json`)
+    
+    console.log('📡 Fetch responses:', {
+      dataset: selectedDataset,
+      entities: entitiesResponse.status,
+      relations: relationsResponse.status
+    })
+    
+    if (!entitiesResponse.ok || !relationsResponse.ok) {
+      throw new Error(`Failed to load dataset: ${selectedDataset}`)
+    }
     
     const entitiesData = await entitiesResponse.json()
     const relationsData = await relationsResponse.json()
