@@ -80,6 +80,9 @@ interface GraphState {
   selectedDataset: string | null
   isLoadingDatasets: boolean
 
+  // 레이아웃 모드 상태
+  layoutMode: 'forceatlas2' | 'noverlap' | 'hybrid'
+
   setSigmaInstance: (instance: any) => void
   setSelectedNode: (nodeId: string | null, moveToSelectedNode?: boolean) => void
   setFocusedNode: (nodeId: string | null) => void
@@ -106,6 +109,9 @@ interface GraphState {
   setAvailableDatasets: (datasets: string[]) => void
   setSelectedDataset: (dataset: string | null) => void
   setIsLoadingDatasets: (isLoading: boolean) => void
+
+  // 레이아웃 모드 액션
+  setLayoutMode: (mode: 'forceatlas2' | 'noverlap' | 'hybrid') => void
 }
 
 const useGraphStoreBase = create<GraphState>()((set, get) => ({
@@ -132,6 +138,11 @@ const useGraphStoreBase = create<GraphState>()((set, get) => ({
   availableDatasets: [],
   selectedDataset: null,
   isLoadingDatasets: false,
+
+  // 레이아웃 모드 초기 상태 (localStorage에서 읽어오기)
+  layoutMode: (typeof window !== 'undefined' ? 
+    (localStorage.getItem('lightrag-layout-mode') as 'forceatlas2' | 'noverlap' | 'hybrid') || 'hybrid' 
+    : 'hybrid') as 'forceatlas2' | 'noverlap' | 'hybrid',
 
   setGraphIsEmpty: (isEmpty: boolean) => set({ graphIsEmpty: isEmpty }),
   setLastSuccessfulQueryLabel: (label: string) => set({ lastSuccessfulQueryLabel: label }),
@@ -187,6 +198,15 @@ const useGraphStoreBase = create<GraphState>()((set, get) => ({
   setAvailableDatasets: (datasets: string[]) => set({ availableDatasets: datasets }),
   setSelectedDataset: (dataset: string | null) => set({ selectedDataset: dataset }),
   setIsLoadingDatasets: (isLoading: boolean) => set({ isLoadingDatasets: isLoading }),
+
+  // 레이아웃 모드 액션 구현
+  setLayoutMode: (mode: 'forceatlas2' | 'noverlap' | 'hybrid') => {
+    // localStorage에 저장
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('lightrag-layout-mode', mode)
+    }
+    set({ layoutMode: mode })
+  },
 }))
 
 const useGraphStore = createSelectors(useGraphStoreBase)

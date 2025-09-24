@@ -95,6 +95,8 @@ const GraphViewer = () => {
   const sigmaRef = useRef<any>(null)
 
   const isFetching = useGraphStore.use.isFetching()
+  const layoutMode = useGraphStore.use.layoutMode()
+  const setLayoutMode = useGraphStore.use.setLayoutMode()
 
   // 데이터셋 관련 상태와 함수들
   const { 
@@ -103,6 +105,13 @@ const GraphViewer = () => {
     isLoadingDatasets, 
     selectDataset 
   } = useLightragGraph()
+
+  // 레이아웃 변경 함수
+  const handleLayoutModeChange = (mode: 'forceatlas2' | 'noverlap' | 'hybrid') => {
+    console.log(`Changing layout mode to: ${mode}`)
+    setLayoutMode(mode)
+    // 새로고침 대신 상태 변경만 - useEffect에서 실시간으로 레이아웃 적용됨
+  }
 
   // Initialize sigma settings once on component mount
   useEffect(() => {
@@ -153,91 +162,177 @@ const GraphViewer = () => {
           left: '8px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '4px',
+          gap: '8px',
           background: 'rgba(9, 9, 11, 0.6)',
           backdropFilter: 'blur(16px)',
           border: '2px solid rgba(255, 255, 255, 0.1)',
           borderRadius: '12px',
-          padding: '8px',
-          zIndex: 1000
+          padding: '12px',
+          zIndex: 1000,
+          minWidth: '200px'
         }}>
-          <button
-            onClick={() => {
-              const sigma = useGraphStore.getState().sigmaInstance
-              if (sigma) {
-                sigma.getCamera().animate({ x: 0, y: 0, ratio: 1 }, { duration: 1000 })
-              }
-            }}
-            style={{
-              background: 'transparent',
+          {/* 레이아웃 모드 선택 */}
+          <div>
+            <h4 style={{ 
+              margin: '0 0 8px 0', 
+              fontSize: '12px', 
+              fontWeight: 600, 
               color: 'white',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              padding: '8px 12px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              marginBottom: '4px'
-            }}
-          >
-            📐 Fit View
-          </button>
-          
-          <button
-            onClick={() => {
-              const sigma = useGraphStore.getState().sigmaInstance
-              const sigmaGraph = useGraphStore.getState().sigmaGraph
-              if (sigma && sigmaGraph) {
-                // Force re-trigger the layout by updating the graph
-                const graph = sigma.getGraph()
-                if (graph && graph.order > 0) {
-                  // Trigger layout re-application
-                  window.location.reload()
+              textAlign: 'center'
+            }}>
+              🎨 Layout Mode
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                color: 'white',
+                fontSize: '11px',
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="radio"
+                  name="layout"
+                  checked={layoutMode === 'forceatlas2'}
+                  onChange={() => handleLayoutModeChange('forceatlas2')}
+                  style={{ accentColor: '#B2EBF2' }}
+                />
+                🌟 Force Atlas 2 Only
+              </label>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                color: 'white',
+                fontSize: '11px',
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="radio"
+                  name="layout"
+                  checked={layoutMode === 'noverlap'}
+                  onChange={() => handleLayoutModeChange('noverlap')}
+                  style={{ accentColor: '#B2EBF2' }}
+                />
+                🔧 Anti-Overlap Only
+              </label>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                color: '#B2EBF2',
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontWeight: layoutMode === 'hybrid' ? 600 : 400
+              }}>
+                <input
+                  type="radio"
+                  name="layout"
+                  checked={layoutMode === 'hybrid'}
+                  onChange={() => handleLayoutModeChange('hybrid')}
+                  style={{ accentColor: '#B2EBF2' }}
+                />
+                ⚡ Hybrid (Recommended)
+              </label>
+            </div>
+          </div>
+
+          {/* 구분선 */}
+          <div style={{
+            height: '1px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            margin: '4px 0'
+          }}></div>
+
+          {/* 기본 컨트롤 버튼들 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <button
+              onClick={() => {
+                const sigma = useGraphStore.getState().sigmaInstance
+                if (sigma) {
+                  sigma.getCamera().animate({ x: 0, y: 0, ratio: 1 }, { duration: 1000 })
                 }
-              }
-            }}
-            style={{
-              background: 'transparent',
-              color: '#B2EBF2',
-              border: '1px solid rgba(178, 235, 242, 0.3)',
-              padding: '8px 12px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              marginBottom: '4px'
-            }}
-            title="Force Atlas 2와 Noverlap을 다시 적용하여 노드 겹침을 해결합니다"
-          >
-            🔄 Fix Overlaps
-          </button>
-          
-          <button
-            onClick={() => {
-              const sigma = useGraphStore.getState().sigmaInstance
-              if (sigma) {
-                const graph = sigma.getGraph()
-                // 노드들을 랜덤하게 재배치 후 레이아웃 적용
-                graph.forEachNode((node: string) => {
-                  graph.setNodeAttribute(node, 'x', Math.random() * 2 - 1)
-                  graph.setNodeAttribute(node, 'y', Math.random() * 2 - 1)
-                })
-                sigma.refresh()
-                // 잠시 후 페이지 새로고침으로 레이아웃 재적용
-                setTimeout(() => window.location.reload(), 100)
-              }
-            }}
-            style={{
-              background: 'transparent',
-              color: '#F57F17',
-              border: '1px solid rgba(245, 127, 23, 0.3)',
-              padding: '8px 12px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-            title="노드를 랜덤하게 재배치하고 새로운 레이아웃을 적용합니다"
-          >
-            🎲 Reshuffle
-          </button>
+              }}
+              style={{
+                background: 'transparent',
+                color: 'white',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                padding: '6px 10px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+            >
+              📐 Fit View
+            </button>
+            
+            <button
+              onClick={() => {
+                const sigma = useGraphStore.getState().sigmaInstance
+                if (sigma && sigma.getGraph) {
+                  const graph = sigma.getGraph()
+                  if (graph && graph.order > 0) {
+                    // 현재 레이아웃 모드 강제 재적용
+                    const currentMode = useGraphStore.getState().layoutMode
+                    console.log(`Re-applying ${currentMode} layout`)
+                    
+                    // 강제로 레이아웃을 다시 트리거하기 위해 잠시 다른 모드로 변경 후 원래대로
+                    const tempMode = currentMode === 'hybrid' ? 'forceatlas2' : 'hybrid'
+                    setLayoutMode(tempMode)
+                    setTimeout(() => {
+                      setLayoutMode(currentMode)
+                    }, 100)
+                  }
+                }
+              }}
+              style={{
+                background: 'transparent',
+                color: '#B2EBF2',
+                border: '1px solid rgba(178, 235, 242, 0.3)',
+                padding: '6px 10px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+              title="현재 선택된 레이아웃 모드를 다시 적용합니다"
+            >
+              🔄 Apply Layout
+            </button>
+            
+            <button
+              onClick={() => {
+                const sigma = useGraphStore.getState().sigmaInstance
+                if (sigma) {
+                  const graph = sigma.getGraph()
+                  graph.forEachNode((node: string) => {
+                    graph.setNodeAttribute(node, 'x', Math.random() * 2 - 1)
+                    graph.setNodeAttribute(node, 'y', Math.random() * 2 - 1)
+                  })
+                  sigma.refresh()
+                  // 새로고침 대신 현재 레이아웃 다시 적용
+                  setTimeout(() => {
+                    const currentMode = useGraphStore.getState().layoutMode
+                    const tempMode = currentMode === 'hybrid' ? 'forceatlas2' : 'hybrid'
+                    setLayoutMode(tempMode)
+                    setTimeout(() => setLayoutMode(currentMode), 100)
+                  }, 100)
+                }
+              }}
+              style={{
+                background: 'transparent',
+                color: '#F57F17',
+                border: '1px solid rgba(245, 127, 23, 0.3)',
+                padding: '6px 10px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+              title="노드를 랜덤하게 재배치하고 새로운 레이아웃을 적용합니다"
+            >
+              🎲 Reshuffle
+            </button>
+          </div>
         </div>
 
         {/* Stats panel */}
@@ -259,9 +354,15 @@ const GraphViewer = () => {
           </h3>
           <div>Nodes: {useGraphStore.getState().rawGraph?.nodes.length || 0}</div>
           <div>Edges: {useGraphStore.getState().rawGraph?.edges.length || 0}</div>
-          <div>Layout: Force Atlas 2 + Noverlap</div>
+          <div>Layout: {
+            layoutMode === 'forceatlas2' ? 'Force Atlas 2' :
+            layoutMode === 'noverlap' ? 'Anti-Overlap' :
+            'Hybrid (FA2 + Noverlap)'
+          }</div>
           <div style={{ fontSize: '10px', color: '#B2EBF2', marginTop: '4px' }}>
-            Anti-overlap algorithm applied
+            {layoutMode === 'forceatlas2' && 'Basic force-directed layout'}
+            {layoutMode === 'noverlap' && 'Overlap prevention active'}
+            {layoutMode === 'hybrid' && 'Best of both algorithms'}
           </div>
         </div>
 

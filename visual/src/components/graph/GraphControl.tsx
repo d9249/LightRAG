@@ -45,6 +45,7 @@ const GraphControl = ({ disableHoverEffect }: { disableHoverEffect?: boolean }) 
   const selectedEdge = useGraphStore.use.selectedEdge()
   const focusedEdge = useGraphStore.use.focusedEdge()
   const sigmaGraph = useGraphStore.use.sigmaGraph()
+  const layoutMode = useGraphStore.use.layoutMode()
 
   // Noverlap 적용 함수
   const applyNoverlap = useCallback(() => {
@@ -75,27 +76,52 @@ const GraphControl = ({ disableHoverEffect }: { disableHoverEffect?: boolean }) 
     }
   }, [sigma])
 
-  // 하이브리드 레이아웃 적용 (Force Atlas 2 + Noverlap)
-  const applyHybridLayout = useCallback(() => {
+  // Force Atlas 2만 적용
+  const applyForceAtlas2Only = useCallback(() => {
     if (sigma && sigma.getGraph) {
       try {
         const graph = sigma.getGraph()
         if (graph && graph.order > 0) {
-          console.log('Applying hybrid layout: Force Atlas 2 + Noverlap')
-          
-          // 1. Force Atlas 2 적용
+          console.log('Applying Force Atlas 2 layout only')
           assignForceAtlas2()
-          
-          // 2. 짧은 지연 후 Noverlap 적용 (Force Atlas 2 완료 대기)
-          setTimeout(() => {
-            applyNoverlap()
-          }, 500)
         }
       } catch (error) {
-        console.error('Error applying hybrid layout:', error)
+        console.error('Error applying Force Atlas 2 layout:', error)
       }
     }
-  }, [sigma, assignForceAtlas2, applyNoverlap])
+  }, [sigma, assignForceAtlas2])
+
+  // 현재 선택된 모드에 따른 레이아웃 적용
+  const applySelectedLayout = useCallback(() => {
+    if (sigma && sigma.getGraph) {
+      const graph = sigma.getGraph()
+      if (graph && graph.order > 0) {
+        console.log(`Applying ${layoutMode} layout`)
+        
+        switch (layoutMode) {
+          case 'forceatlas2':
+            applyForceAtlas2Only()
+            break
+          case 'noverlap':
+            // Force Atlas 2를 먼저 적용한 후 Noverlap만 적용
+            assignForceAtlas2()
+            setTimeout(() => {
+              applyNoverlap()
+            }, 500)
+            break
+          case 'hybrid':
+            // Force Atlas 2 + Noverlap 하이브리드
+            assignForceAtlas2()
+            setTimeout(() => {
+              applyNoverlap()
+            }, 500)
+            break
+          default:
+            applyForceAtlas2Only()
+        }
+      }
+    }
+  }, [sigma, layoutMode, assignForceAtlas2, applyNoverlap, applyForceAtlas2Only])
 
   /**
    * When component mount or maxIterations changes
@@ -116,11 +142,24 @@ const GraphControl = ({ disableHoverEffect }: { disableHoverEffect?: boolean }) 
         console.error('Error setting graph on sigma instance:', error);
       }
 
-      // 하이브리드 레이아웃 적용 (Force Atlas 2 + Noverlap)
-      applyHybridLayout();
-      console.log('Hybrid layout (Force Atlas 2 + Noverlap) applied to graph');
+      // 선택된 레이아웃 모드에 따라 적용
+      applySelectedLayout();
+      console.log(`${layoutMode} layout applied to graph`);
     }
-  }, [sigma, sigmaGraph, applyHybridLayout, maxIterations])
+  }, [sigma, sigmaGraph, applySelectedLayout, maxIterations])
+
+  /**
+   * 레이아웃 모드가 변경될 때 실시간으로 적용
+   */
+  useEffect(() => {
+    if (sigma && sigma.getGraph && sigmaGraph) {
+      const graph = sigma.getGraph()
+      if (graph && graph.order > 0) {
+        console.log(`Layout mode changed to: ${layoutMode}`)
+        applySelectedLayout()
+      }
+    }
+  }, [layoutMode, applySelectedLayout, sigma, sigmaGraph])
 
   /**
    * Ensure the sigma instance is set in the store
