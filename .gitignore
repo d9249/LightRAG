@@ -9,6 +9,7 @@ __pycache__/
 .qoder/
 lightrag_env/
 node_modules/
+.claude/
 
 # Virtual Environment
 .venv/
