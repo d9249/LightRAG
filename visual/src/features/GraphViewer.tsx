@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { SigmaContainer, useRegisterEvents, useSigma } from '@react-sigma/core'
 import { Settings as SigmaSettings } from 'sigma/settings'
 import { EdgeArrowProgram, NodePointProgram, NodeCircleProgram } from 'sigma/rendering'
@@ -94,9 +94,6 @@ const GraphViewer = () => {
   const [sigmaSettings, setSigmaSettings] = useState(defaultSigmaSettings)
   const sigmaRef = useRef<any>(null)
 
-  const selectedNode = useGraphStore.use.selectedNode()
-  const focusedNode = useGraphStore.use.focusedNode()
-  const moveToSelectedNode = useGraphStore.use.moveToSelectedNode()
   const isFetching = useGraphStore.use.isFetching()
 
   // 데이터셋 관련 상태와 함수들
@@ -129,7 +126,6 @@ const GraphViewer = () => {
     };
   }, []);
 
-  const autoFocusedNode = useMemo(() => focusedNode ?? selectedNode, [focusedNode, selectedNode])
 
   // Always render SigmaContainer but control its visibility with CSS
   return (
@@ -150,7 +146,7 @@ const GraphViewer = () => {
           onSelectDataset={selectDataset}
         />
 
-        {/* Basic controls */}
+        {/* Enhanced controls */}
         <div style={{
           position: 'absolute',
           top: '8px',
@@ -179,10 +175,68 @@ const GraphViewer = () => {
               padding: '8px 12px',
               borderRadius: '6px',
               cursor: 'pointer',
-              fontSize: '14px'
+              fontSize: '14px',
+              marginBottom: '4px'
             }}
           >
             📐 Fit View
+          </button>
+          
+          <button
+            onClick={() => {
+              const sigma = useGraphStore.getState().sigmaInstance
+              const sigmaGraph = useGraphStore.getState().sigmaGraph
+              if (sigma && sigmaGraph) {
+                // Force re-trigger the layout by updating the graph
+                const graph = sigma.getGraph()
+                if (graph && graph.order > 0) {
+                  // Trigger layout re-application
+                  window.location.reload()
+                }
+              }
+            }}
+            style={{
+              background: 'transparent',
+              color: '#B2EBF2',
+              border: '1px solid rgba(178, 235, 242, 0.3)',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              marginBottom: '4px'
+            }}
+            title="Force Atlas 2와 Noverlap을 다시 적용하여 노드 겹침을 해결합니다"
+          >
+            🔄 Fix Overlaps
+          </button>
+          
+          <button
+            onClick={() => {
+              const sigma = useGraphStore.getState().sigmaInstance
+              if (sigma) {
+                const graph = sigma.getGraph()
+                // 노드들을 랜덤하게 재배치 후 레이아웃 적용
+                graph.forEachNode((node: string) => {
+                  graph.setNodeAttribute(node, 'x', Math.random() * 2 - 1)
+                  graph.setNodeAttribute(node, 'y', Math.random() * 2 - 1)
+                })
+                sigma.refresh()
+                // 잠시 후 페이지 새로고침으로 레이아웃 재적용
+                setTimeout(() => window.location.reload(), 100)
+              }
+            }}
+            style={{
+              background: 'transparent',
+              color: '#F57F17',
+              border: '1px solid rgba(245, 127, 23, 0.3)',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+            title="노드를 랜덤하게 재배치하고 새로운 레이아웃을 적용합니다"
+          >
+            🎲 Reshuffle
           </button>
         </div>
 
@@ -205,7 +259,10 @@ const GraphViewer = () => {
           </h3>
           <div>Nodes: {useGraphStore.getState().rawGraph?.nodes.length || 0}</div>
           <div>Edges: {useGraphStore.getState().rawGraph?.edges.length || 0}</div>
-          <div>Style: WebUI with Categories</div>
+          <div>Layout: Force Atlas 2 + Noverlap</div>
+          <div style={{ fontSize: '10px', color: '#B2EBF2', marginTop: '4px' }}>
+            Anti-overlap algorithm applied
+          </div>
         </div>
 
         {/* Category Legend panel */}
