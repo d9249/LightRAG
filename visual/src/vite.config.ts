@@ -11,7 +11,7 @@ export default defineConfig({
   },
   base: './', // 상대 경로로 설정하여 HTML 파일 직접 열기 가능
   build: {
-    outDir: '../output/react-build',
+    outDir: '../dist',
     emptyOutDir: true,
     rollupOptions: {
       output: {

@@ -106,44 +106,100 @@ const EXTENDED_COLORS = [
   '#DEB887', // BurlyWood
 ];
 
+// 향상된 엔티티 분류 함수
+const classifyEntity = (entityName: string): string => {
+  const name = entityName.toLowerCase()
+  
+  // 인물 (파란색) - RoyalBlue
+  if (name.includes('씨') || name.includes('님') || name.includes('사람') || 
+      name.includes('고객') || name.includes('환자') || name.includes('의사') || 
+      name.includes('변호사') || name.includes('회장') || name.includes('대표') ||
+      name.includes('직원') || name.includes('관리자') || name.match(/[가-힣]+님$/)) {
+    return 'person'
+  }
+  
+  // 조직/기관 (녹색) - Green
+  if (name.includes('회사') || name.includes('보험') || name.includes('은행') || 
+      name.includes('병원') || name.includes('법원') || name.includes('정부') || 
+      name.includes('부서') || name.includes('팀') || name.includes('그룹') ||
+      name.includes('생명') || name.includes('기관') || name.includes('센터') ||
+      name.includes('abl') || name.match(/.*보험.*회사/)) {
+    return 'organization'
+  }
+  
+  // 장소/위치 (주황색) - Carrot
+  if (name.includes('시') || name.includes('구') || name.includes('동') || 
+      name.includes('로') || name.includes('길') || name.includes('지역') ||
+      name.includes('위치') || name.includes('주소') || name.includes('장소')) {
+    return 'location'
+  }
+  
+  // 의료/질병 (분홍색) - Pale Pink
+  if (name.includes('암') || name.includes('병') || name.includes('치료') || 
+      name.includes('진단') || name.includes('수술') || name.includes('약') || 
+      name.includes('증상') || name.includes('질환') || name.includes('의료') ||
+      name.includes('건강') || name.includes('질병') || name.includes('갑상선') ||
+      name.includes('심장') || name.includes('수질성') || name.includes('재활')) {
+    return 'geo'  // WebUI에서는 의료를 geo 카테고리로 분류
+  }
+  
+  // 금융/보험 (보라색) - Purple  
+  if (name.includes('보험금') || name.includes('금') || name.includes('원') || 
+      name.includes('율') || name.includes('이자') || name.includes('대출') || 
+      name.includes('투자') || name.includes('수익') || name.includes('료') ||
+      name.includes('비용') || name.includes('가격') || name.includes('연금') ||
+      name.includes('적립') || name.includes('배당') || name.includes('수익률')) {
+    return 'technology'  // WebUI에서는 금융을 technology로 분류
+  }
+  
+  // 법률/계약 (네이비블루) - NavyBlue
+  if (name.includes('법') || name.includes('계약') || name.includes('약관') || 
+      name.includes('소송') || name.includes('판결') || name.includes('권리') || 
+      name.includes('의무') || name.includes('조항') || name.includes('규정') ||
+      name.includes('청약') || name.includes('해지') || name.includes('철회')) {
+    return 'group'
+  }
+  
+  // 제품/서비스 (초록색) - Green
+  if (name.includes('서비스') || name.includes('상품') || name.includes('제품') || 
+      name.includes('특약') || name.includes('보장') || name.includes('혜택') ||
+      name.includes('프로그램') || name.includes('상담') || name.includes('지원')) {
+    return 'object'
+  }
+  
+  // 기술/시스템 (다크슬레이트그레이) - DarkSlateGray
+  if (name.includes('코드') || name.includes('qr') || name.includes('앱') || 
+      name.includes('ai') || name.includes('디지털') || name.includes('온라인') ||
+      name.includes('시스템') || name.includes('view') || name.includes('프로그램')) {
+    return 'equipment'
+  }
+  
+  // 이벤트/활동 (터키색) - Turquoise
+  if (name.includes('이벤트') || name.includes('활동') || name.includes('행사') || 
+      name.includes('프로세스') || name.includes('절차') || name.includes('과정') ||
+      name.includes('납입') || name.includes('지급') || name.includes('면제')) {
+    return 'event'
+  }
+  
+  // 카테고리/분류 (구글레드) - GoogleRed
+  if (name.includes('분류표') || name.includes('표') || name.includes('목록') ||
+      name.includes('형') || name.includes('종류') || name.includes('유형') ||
+      name.match(/.*형$/) || name.match(/.*표$/)) {
+    return 'category'
+  }
+  
+  return 'unknown'  // 기본값 (노란색)
+}
+
 // Select color based on node type
 const getNodeColorByType = (nodeType: string | undefined): string => {
-  const defaultColor = '#5D6D7E';
+  const defaultColor = '#f4d371';  // 노란색 (unknown)
   const normalizedType = nodeType ? nodeType.toLowerCase() : 'unknown';
-  const typeColorMap = useGraphStore.getState().typeColorMap;
-
-  // Return previous color if already mapped
-  if (typeColorMap.has(normalizedType)) {
-    return typeColorMap.get(normalizedType) || defaultColor;
-  }
-
-  const standardType = TYPE_SYNONYMS[normalizedType];
-  if (standardType) {
-    const color = NODE_TYPE_COLORS[standardType];
-    // Update color mapping
-    const newMap = new Map(typeColorMap);
-    newMap.set(normalizedType, color);
-    useGraphStore.setState({ typeColorMap: newMap });
-    return color;
-  }
-
-  // For unknown nodeTypes, use extended colors
-  const usedExtendedColors = new Set(
-    Array.from(typeColorMap.entries())
-      .filter(([, color]) => !Object.values(NODE_TYPE_COLORS).includes(color))
-      .map(([, color]) => color)
-  );
-
-  // Find and use the first unused extended color
-  const unusedColor = EXTENDED_COLORS.find(color => !usedExtendedColors.has(color));
-  const newColor = unusedColor || defaultColor;
-
-  // Update color mapping
-  const newMap = new Map(typeColorMap);
-  newMap.set(normalizedType, newColor);
-  useGraphStore.setState({ typeColorMap: newMap });
-
-  return newColor;
+  
+  // 직접 색상 매핑
+  const color = NODE_TYPE_COLORS[normalizedType] || defaultColor;
+  
+  return color;
 };
 
 export type NodeType = {
@@ -259,19 +315,22 @@ const loadLocalGraphData = async (dataset?: string) => {
       }
     }
     
-    // 노드 생성
-    const nodes: any[] = Array.from(allEntities).map(entity => ({
-      id: entity,
-      labels: [entity],
-      properties: {
-        entity_id: entity,
-        entity_type: 'unknown',
-        description: '',
-        source_id: '',
-        file_path: '',
-        created_at: 0
+    // 노드 생성 (카테고리별 분류 적용)
+    const nodes: any[] = Array.from(allEntities).map(entity => {
+      const category = classifyEntity(entity)  // 엔티티를 카테고리로 분류
+      return {
+        id: entity,
+        labels: [entity],
+        properties: {
+          entity_id: entity,
+          entity_type: category,  // 분류된 카테고리 적용
+          description: `Category: ${category}`,
+          source_id: '',
+          file_path: '',
+          created_at: 0
+        }
       }
-    }))
+    })
     
     // 엣지 생성
     const edges: any[] = []
@@ -458,10 +517,33 @@ const useLightragGraph = () => {
         const range = maxDegree - minDegree || 1
         const scale = Constants.maxNodeSize - Constants.minNodeSize
 
+        // 노드 크기 및 색상 설정 (카테고리별 분류 적용)
+        const categoryStats = new Map<string, number>()
+        
         rawData.nodes.forEach(node => {
+          // 크기 설정
           node.size = Math.round(Constants.minNodeSize + scale * Math.pow((node.degree - minDegree) / range, 0.5))
-          node.color = getNodeColorByType(node.properties?.entity_type)
+          
+          // 엔티티 재분류 (더 정확한 분류를 위해)
+          const actualCategory = classifyEntity(node.id)
+          node.properties.entity_type = actualCategory
+          
+          // 색상 적용
+          node.color = getNodeColorByType(actualCategory)
+          
+          // 통계 수집
+          categoryStats.set(actualCategory, (categoryStats.get(actualCategory) || 0) + 1)
         })
+        
+        // 카테고리별 통계 출력
+        console.log('🎨 카테고리별 노드 분포:')
+        Array.from(categoryStats.entries())
+          .sort((a, b) => b[1] - a[1])
+          .forEach(([category, count]) => {
+            const color = NODE_TYPE_COLORS[category] || '#f4d371'
+            const percentage = ((count / rawData.nodes.length) * 100).toFixed(1)
+            console.log(`   ${category}: ${count}개 (${percentage}%) - ${color}`)
+          })
 
         // RawGraph 생성
         const rawGraph = new RawGraph()

@@ -205,7 +205,69 @@ const GraphViewer = () => {
           </h3>
           <div>Nodes: {useGraphStore.getState().rawGraph?.nodes.length || 0}</div>
           <div>Edges: {useGraphStore.getState().rawGraph?.edges.length || 0}</div>
-          <div>Style: WebUI Exact React</div>
+          <div>Style: WebUI with Categories</div>
+        </div>
+
+        {/* Category Legend panel */}
+        <div style={{
+          position: 'absolute',
+          bottom: '8px',
+          right: '8px',
+          background: 'rgba(9, 9, 11, 0.6)',
+          backdropFilter: 'blur(16px)',
+          border: '2px solid rgba(255, 255, 255, 0.1)',
+          color: 'white',
+          padding: '12px',
+          borderRadius: '12px',
+          fontSize: '11px',
+          maxWidth: '200px',
+          zIndex: 1000
+        }}>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 600 }}>
+            🏷️ Categories
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '12px', height: '12px', backgroundColor: '#4169E1', borderRadius: '50%' }}></div>
+              <span>👤 Person</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '12px', height: '12px', backgroundColor: '#0f705d', borderRadius: '50%' }}></div>
+              <span>🏢 Organization</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '12px', height: '12px', backgroundColor: '#cf6d17', borderRadius: '50%' }}></div>
+              <span>📍 Location</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '12px', height: '12px', backgroundColor: '#ff99cc', borderRadius: '50%' }}></div>
+              <span>⚕️ Medical</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '12px', height: '12px', backgroundColor: '#b300b3', borderRadius: '50%' }}></div>
+              <span>💰 Financial</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '12px', height: '12px', backgroundColor: '#0f558a', borderRadius: '50%' }}></div>
+              <span>⚖️ Legal</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '12px', height: '12px', backgroundColor: '#00cc00', borderRadius: '50%' }}></div>
+              <span>📦 Service</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '12px', height: '12px', backgroundColor: '#00bfa0', borderRadius: '50%' }}></div>
+              <span>🎯 Event</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '12px', height: '12px', backgroundColor: '#e3493b', borderRadius: '50%' }}></div>
+              <span>📊 Category</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '12px', height: '12px', backgroundColor: '#f4d371', borderRadius: '50%' }}></div>
+              <span>❓ Unknown</span>
+            </div>
+          </div>
         </div>
       </SigmaContainer>
 
