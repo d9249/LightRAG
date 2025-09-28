@@ -1,0 +1,75 @@
+# Git 관련
+.git
+.gitignore
+.gitattributes
+
+# Python 관련
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 가상환경
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE 관련
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 로그 파일
+*.log
+logs/
+
+# 테스트 관련
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# 문서
+README.md
+README*.md
+*.md
+docs/
+
+# 불필요한 설정 파일
+.pre-commit-config.yaml
+.github/
+.dockerignore
+Dockerfile
+
+# 개발용 데이터 (실제 운영에서는 볼륨 마운트 사용)
+data/*/
+!data/.gitkeep
+
+# 캐시 및 임시 파일
+.cache/
+tmp/
+temp/

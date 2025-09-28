@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # FastAPI 애플리케이션 서버 (Presentation + Business Tier)
+  lightrag-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lightrag-documents-api
+    ports:
+      - "9621:9621"
+    volumes:
+      - ./data:/app/data
+      - ./app:/app/app
+      - ./core:/app/core
+    environment:
+      - PORT=9621
+      - OLLAMA_URL=http://ollama:11434
+      - NEO4J_URL=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=password
+      - VECTOR_STORAGE=nanodb
+      - GRAPH_STORAGE=neo4j
+      - MAX_FILE_SIZE=104857600  # 100MB
+      - CHUNK_SIZE=1200
+      - CHUNK_OVERLAP_SIZE=100
+    depends_on:
+      - neo4j
+      - ollama
+    restart: unless-stopped
+    networks:
+      - lightrag-network
+
+  # Neo4j 그래프 데이터베이스 (Data Tier)
+  neo4j:
+    image: neo4j:5.15-community
+    container_name: lightrag-neo4j
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    volumes:
+      - ./data/graph_storage:/data
+      - ./data/graph_storage/logs:/logs
+    environment:
+      - NEO4J_AUTH=neo4j/password
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_security_procedures_allowlist=apoc.*
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_apoc_import_file_use__neo4j__config=true
+    restart: unless-stopped
+    networks:
+      - lightrag-network
+
+  # Ollama LLM 서비스 (Data Tier)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: lightrag-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./data/ollama:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_HOST=0.0.0.0
+    restart: unless-stopped
+    networks:
+      - lightrag-network
+    # GPU 지원을 위한 설정 (선택적)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+networks:
+  lightrag-network:
+    driver: bridge
+
+volumes:
+  neo4j_data:
+  ollama_data:
