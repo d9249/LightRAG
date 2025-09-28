@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios'
-import { backendBaseUrl } from '@/lib/constants'
+import { backendBaseUrl, popularLabelsDefaultLimit, searchLabelsDefaultLimit } from '@/lib/constants'
 import { errorMessage } from '@/lib/utils'
 import { useSettingsStore } from '@/stores/settings'
 import { navigationService } from '@/services/navigation'
@@ -99,6 +99,9 @@ export type QueryMode = 'naive' | 'local' | 'global' | 'hybrid' | 'mix' | 'bypas
 export type Message = {
   role: 'user' | 'assistant' | 'system'
   content: string
+  thinkingContent?: string
+  displayContent?: string
+  thinkingTime?: number | null
 }
 
 export type QueryRequest = {
@@ -313,6 +316,16 @@ export const queryGraphs = async (
 
 export const getGraphLabels = async (): Promise<string[]> => {
   const response = await axiosInstance.get('/graph/label/list')
+  return response.data
+}
+
+export const getPopularLabels = async (limit: number = popularLabelsDefaultLimit): Promise<string[]> => {
+  const response = await axiosInstance.get(`/graph/label/popular?limit=${limit}`)
+  return response.data
+}
+
+export const searchLabels = async (query: string, limit: number = searchLabelsDefaultLimit): Promise<string[]> => {
+  const response = await axiosInstance.get(`/graph/label/search?q=${encodeURIComponent(query)}&limit=${limit}`)
   return response.data
 }
 
