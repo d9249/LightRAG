@@ -1,4 +1,4 @@
-
+<docs>
 # API 참조
 
 <cite>
@@ -67,7 +67,7 @@ response = requests.post(url, headers=headers, files=files)
 print(response.json())
 ```
 
-**Section sources**
+**섹션 소스**
 - [document_routes.py](file://lightrag/api/routers/document_routes.py#L1600-L1720)
 
 ### 문서 삭제
@@ -127,7 +127,7 @@ response = requests.delete(url, headers=headers, json=data)
 print(response.json())
 ```
 
-**Section sources**
+**섹션 소스**
 - [document_routes.py](file://lightrag/api/routers/document_routes.py#L2000-L2050)
 
 ### 문서 목록 조회
@@ -195,7 +195,7 @@ response = requests.get(url, headers=headers)
 print(response.json())
 ```
 
-**Section sources**
+**섹션 소스**
 - [document_routes.py](file://lightrag/api/routers/document_routes.py#L2250-L2300)
 
 ## 그래프 조회 및 시각화 API
@@ -233,7 +233,7 @@ response = requests.get(url, headers=headers)
 print(response.json())
 ```
 
-**Section sources**
+**섹션 소스**
 - [graph_routes.py](file://lightrag/api/routers/graph_routes.py#L50-L70)
 
 ### 지식 그래프 조회
@@ -282,7 +282,7 @@ response = requests.get(url, headers=headers, params=params)
 print(response.json())
 ```
 
-**Section sources**
+**섹션 소스**
 - [graph_routes.py](file://lightrag/api/routers/graph_routes.py#L72-L100)
 
 ### 엔티티 존재 여부 확인
@@ -320,7 +320,7 @@ response = requests.get(url, headers=headers, params=params)
 print(response.json())
 ```
 
-**Section sources**
+**섹션 소스**
 - [graph_routes.py](file://lightrag/api/routers/graph_routes.py#L102-L120)
 
 ## 검색 쿼리 API
@@ -372,312 +372,4 @@ LightRAG 서버는 검색 쿼리를 처리하기 위한 API를 제공합니다. 
 - **conversation_history** (선택): 컨텍스트를 유지하기 위한 과거 대화 기록
 - **history_turns** (선택): 응답 컨텍스트에서 고려할 완전한 대화 턴 수
 - **ids** (선택): 결과를 필터링할 ID 목록
-- **user_prompt** (선택): 쿼리에 사용할 사용자 제공 프롬프트
-- **enable_rerank** (선택): 검색된 텍스트 청크에 리랭킹을 활성화할지 여부 (기본값: `true`)
-
-#### 응답 스키마
-```json
-{
-  "response": "Machine learning is a subset of artificial intelligence..."
-}
-```
-
-- **response**: 생성된 응답
-
-#### 사용 예시
-```bash
-curl -X POST "http://localhost:9621/query" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "What is machine learning?",
-    "mode": "mix"
-  }'
-```
-
-```python
-import requests
-
-url = "http://localhost:9621/query"
-headers = {
-    "Authorization": "Bearer YOUR_JWT_TOKEN",
-    "Content-Type": "application/json"
-}
-data = {
-    "query": "What is machine learning?",
-    "mode": "mix"
-}
-
-response = requests.post(url, headers=headers, json=data)
-print(response.json())
-```
-
-**Section sources**
-- [query_routes.py](file://lightrag/api/routers/query_routes.py#L113-L175)
-
-### 스트리밍 쿼리 요청
-
-검색-증강 생성(RAG) 쿼리를 수행하고 응답을 스트리밍합니다.
-
-**HTTP 메서드**: `POST`  
-**URL 패턴**: `/query/stream`  
-**인증 방법**: JWT 토큰 또는 API 키
-
-#### 요청 스키마
-- `query_routes.py`의 `QueryRequest`와 동일
-
-#### 응답 스키마
-- **Content-Type**: `application/x-ndjson`
-- 여러 JSON 객체를 줄바꿈으로 구분하여 스트리밍
-
-```json
-{"response": "Machine"}
-{"response": " learning"}
-{"response": " is a subset of artificial intelligence..."}
-```
-
-#### 사용 예시
-```bash
-curl -X POST "http://localhost:9621/query/stream" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "What is machine learning?",
-    "mode": "mix"
-  }'
-```
-
-```python
-import requests
-
-def stream_query():
-    url = "http://localhost:9621/query/stream"
-    headers = {
-        "Authorization": "Bearer YOUR_JWT_TOKEN",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "query": "What is machine learning?",
-        "mode": "mix"
-    }
-
-    response = requests.post(url, headers=headers, json=data, stream=True)
-    for line in response.iter_lines():
-        if line:
-            print(line.decode('utf-8'))
-
-stream_query()
-```
-
-**Section sources**
-- [query_routes.py](file://lightrag/api/routers/query_routes.py#L173-L202)
-
-## Ollama 호환 API
-
-LightRAG 서버는 Ollama와 호환되는 API를 제공하여 Ollama를 지원하는 AI 챗봇 프론트엔드(예: Open WebUI)에서 쉽게 접근할 수 있도록 합니다. 이러한 엔드포인트는 `ollama_api.py` 파일에 정의되어 있으며, 인증이 필요합니다.
-
-### Ollama 버전 정보
-
-Ollama 버전 정보를 가져옵니다.
-
-**HTTP 메서드**: `GET`  
-**URL 패턴**: `/api/version`  
-**인증 방법**: JWT 토큰 또는 API 키
-
-#### 응답 스키마
-```json
-{"version": "0.9.3"}
-```
-
-#### 사용 예시
-```bash
-curl -X GET "http://localhost:9621/api/version" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
-```python
-import requests
-
-url = "http://localhost:9621/api/version"
-headers = {"Authorization": "Bearer YOUR_JWT_TOKEN"}
-
-response = requests.get(url, headers=headers)
-print(response.json())
-```
-
-**Section sources**
-- [ollama_api.py](file://lightrag/api/routers/ollama_api.py#L212-L220)
-
-### 사용 가능한 모델 목록
-
-사용 가능한 모델을 목록으로 반환합니다.
-
-**HTTP 메서드**: `GET`  
-**URL 패턴**: `/api/tags`  
-**인증 방법**: JWT 토큰 또는 API 키
-
-#### 응답 스키마
-```json
-{
-  "models": [
-    {
-      "name": "lightrag:latest",
-      "model": "lightrag:latest",
-      "modified_at": "2024-01-15T00:00:00Z",
-      "size": 7365960935,
-      "digest": "sha256:lightrag",
-      "details": {
-        "parent_model": "",
-        "format": "gguf",
-        "family": "lightrag",
-        "families": ["lightrag"],
-        "parameter_size": "13B",
-        "quantization_level": "Q4_0"
-      }
-    }
-  ]
-}
-```
-
-#### 사용 예시
-```bash
-curl -X GET "http://localhost:9621/api/tags" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
-```python
-import requests
-
-url = "http://localhost:9621/api/tags"
-headers = {"Authorization": "Bearer YOUR_JWT_TOKEN"}
-
-response = requests.get(url, headers=headers)
-print(response.json())
-```
-
-**Section sources**
-- [ollama_api.py](file://lightrag/api/routers/ollama_api.py#L222-L240)
-
-### 채팅 완성 요청
-
-Ollama 모델처럼 채팅 완성 요청을 처리합니다.
-
-**HTTP 메서드**: `POST`  
-**URL 패턴**: `/api/chat`  
-**인증 방법**: JWT 토큰 또는 API 키
-
-#### 요청 스키마
-```json
-{
-  "model": "lightrag:latest",
-  "messages": [
-    {"role": "user", "content": "What is machine learning?"}
-  ],
-  "stream": false,
-  "options": {},
-  "system": "You are a helpful assistant."
-}
-```
-
-- **model**: 사용할 모델 이름
-- **messages**: 메시지 목록
-- **stream**: 스트리밍 응답 여부
-- **options**: 추가 옵션
-- **system**: 시스템 프롬프트
-
-#### 응답 스키마
-```json
-{
-  "model": "lightrag:latest",
-  "created_at": "2024-01-15T00:00:00Z",
-  "message": {
-    "role": "assistant",
-    "content": "Machine learning is a subset of artificial intelligence..."
-  },
-  "done": true,
-  "done_reason": "stop",
-  "total_duration": 123456789,
-  "load_duration": 0,
-  "prompt_eval_count": 10,
-  "prompt_eval_duration": 123456,
-  "eval_count": 50,
-  "eval_duration": 12345678
-}
-```
-
-#### Open WebUI 통합 방법
-LightRAG 서버를 시작한 후, Open WebUI 관리 패널에서 Ollama 유형의 연결을 추가합니다. 그러면 `lightrag:latest`라는 모델이 Open WebUI의 모델 관리 인터페이스에 나타납니다. 사용자는 채팅 인터페이스를 통해 LightRAG에 쿼리를 보낼 수 있습니다. 이 사용 사례의 경우, LightRAG를 서비스로 설치하는 것이 가장 좋습니다.
-
-Open WebUI는 세션 제목 및 세션 키워드 생성 작업에 LLM을 사용합니다. 따라서 Ollama 챗 완성 API는 OpenWebUI 세션 관련 요청을 감지하고 이를 기본 LLM에 직접 전달합니다.
-
-#### 사용 예시
-```bash
-curl -X POST "http://localhost:9621/api/chat" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "lightrag:latest",
-    "messages": [
-      {"role": "user", "content": "What is machine learning?"}
-    ],
-    "stream": false
-  }'
-```
-
-```python
-import requests
-
-url = "http://localhost:9621/api/chat"
-headers = {
-    "Authorization": "Bearer YOUR_JWT_TOKEN",
-    "Content-Type": "application/json"
-}
-data = {
-    "model": "lightrag:latest",
-    "messages": [
-        {"role": "user", "content": "What is machine learning?"}
-    ],
-    "stream": False
-}
-
-response = requests.post(url, headers=headers, json=data)
-print(response.json())
-```
-
-**Section sources**
-- [ollama_api.py](file://lightrag/api/routers/ollama_api.py#L459-L550)
-
-## 인증 및 보안
-
-LightRAG 서버는 JWT 기반 인증과 API 키 인증을 지원합니다. 보안 고려사항은 `auth.py` 및 `config.py` 파일에 정의되어 있습니다.
-
-### 인증 방법
-
-- **JWT 토큰**: `auth.py`에서 `AuthHandler` 클래스를 사용하여 생성 및 검증합니다.
-- **API 키**: 환경 변수 `LIGHTRAG_API_KEY`를 통해 설정할 수 있습니다.
-
-### 설정
-
-- **API 키**: `config.py`의 `global_args.key`를 통해 설정합니다.
-- **JWT 비밀 키**: `config.py`의 `global_args.token_secret`를 통해 설정합니다.
-- **토큰 만료 시간**: `config.py`의 `global_args.token_expire_hours` 및 `global_args.guest_token_expire_hours`를 통해 설정합니다.
-- **JWT 알고리즘**: `config.py`의 `global_args.jwt_algorithm`를 통해 설정합니다.
-
-### 보안 고려사항
-
-- 인증이 구성되지 않은 경우, 게스트 토큰이 생성되어 게스트 액세스가 가능합니다.
-- 인증이 구성된 경우, 유효한 JWT 토큰 또는 API 키가 필요합니다.
-- CORS 원본은 `config.py`의 `global_args.cors_origins`를 통해 구성할 수 있습니다.
-- 인증이 비활성화된 경우, `/auth-status` 엔드포인트를 통해 게스트 토큰을 가져올 수 있습니다.
-
-**Section sources**
-- [auth.py](file://lightrag/api/auth.py#L0-L108)
-- [config.py](file://lightrag/api/config.py#L0-L424)
-
-## 오류 응답 코드
-
-LightRAG API는 다양한 오류 상황에 대해 표준 HTTP 상태 코드를 반환합니다.
-
-### 일반적인 오류 코드
-
-- **4
+- **user_prompt** (선택): 쿼리에 사용

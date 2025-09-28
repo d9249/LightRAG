@@ -1,3 +1,4 @@
+<docs>
 # Ollama 호환 API
 
 <cite>
@@ -185,88 +186,4 @@ LightRAG의 핵심 기능은 지식 그래프 기반 검색입니다. 사용자�
 flowchart TD
 Start([쿼리 입력]) --> ParsePrefix["접두사 분석"]
 ParsePrefix --> CheckPrefix{"접두사 존재?"}
-CheckPrefix --> |Yes| ExecuteSearch["지식 그래프 기반 검색 수행"]
-CheckPrefix --> |No| UseHybrid["하이브리드 모드 사용"]
-UseHybrid --> ExecuteSearch
-ExecuteSearch --> GenerateResponse["응답 생성"]
-GenerateResponse --> End([응답 반환])
-```
-
-**Diagram sources**
-- [ollama_api.py](file://lightrag/api/routers/ollama_api.py#L147-L179)
-
-**Section sources**
-- [ollama_api.py](file://lightrag/api/routers/ollama_api.py#L147-L179)
-
-## 인증 설정
-
-### 인증이 필요 없는 경우
-인증이 필요 없는 경우, `AUTH_ACCOUNTS` 환경 변수를 설정하지 않으면 됩니다. 이 경우, 시스템은 게스트 토큰을 생성하여 인증 없이 접근을 허용합니다.
-
-### 인증이 필요한 경우
-인증이 필요한 경우, `AUTH_ACCOUNTS` 환경 변수에 사용자 계정 정보를 설정해야 합니다. 형식은 `username:password`이며, 여러 계정은 쉼표로 구분합니다.
-
-```bash
-export AUTH_ACCOUNTS="user1:password1,user2:password2"
-```
-
-또는 `.env` 파일에 다음 내용을 추가합니다:
-
-```env
-AUTH_ACCOUNTS=user1:password1,user2:password2
-```
-
-JWT 토큰은 `auth.py`에 정의된 `AuthHandler` 클래스를 통해 생성 및 검증됩니다. 토큰의 만료 시간은 `TOKEN_EXPIRE_HOURS` 환경 변수로 설정할 수 있습니다.
-
-**Section sources**
-- [auth.py](file://lightrag/api/auth.py#L1-L110)
-- [config.py](file://lightrag/api/config.py#L400-L424)
-
-## 통합 테스트 예제
-
-### curl 예제
-다음은 `curl`을 사용한 통합 테스트 예제입니다.
-
-**`/api/generate` 테스트**
-```bash
-curl http://localhost:9621/api/generate -d '{
-  "model": "lightrag",
-  "prompt": "LightRAG에 대해 알려주세요.",
-  "stream": false
-}'
-```
-
-**`/api/chat` 테스트**
-```bash
-curl http://localhost:9621/api/chat -d '{
-  "model": "lightrag",
-  "messages": [
-    { "role": "user", "content": "LightRAG에 대해 알려주세요." }
-  ],
-  "stream": false
-}'
-```
-
-**`/api/tags` 테스트**
-```bash
-curl http://localhost:9621/api/tags
-```
-
-### 인증이 필요한 경우
-인증이 필요한 경우, `Authorization` 헤더에 JWT 토큰을 포함해야 합니다.
-
-```bash
-curl http://localhost:9621/api/chat -H "Authorization: Bearer <your_token>" -d '{
-  "model": "lightrag",
-  "messages": [
-    { "role": "user", "content": "LightRAG에 대해 알려주세요." }
-  ],
-  "stream": false
-}'
-```
-
-**Section sources**
-- [ollama_api.py](file://lightrag/api/routers/ollama_api.py#L212-L245)
-
-## 결론
-LightRAG은 Ollama의 공식 API 사양과 호환되는 엔드포인트를 제공하여 다양한 외부 챗봇 UI와의 통합을 가능하게 합니다. `/api/generate`, `/api/chat`, `/api/tags` 엔드포인트는 Ollama 공식 사양과 일치하며, LightRAG 고유의 지식 그래프 기반 검색 기능을 통해 보다 정확한 응답을 생성할 수 있습니다. 인증은 선택 사항이며, 필요에 따라 JWT 기반 인증을 설정할 수 있습니다. 제공된 curl 예제를 통해 통합 테스트를 쉽게 수행할 수 있습니다.
+CheckPrefix --> |Yes| ExecuteSearch["지
