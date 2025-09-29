@@ -16,8 +16,8 @@ RUN apt-get update && apt-get install -y \
     && . $HOME/.cargo/env
 
 # Copy pyproject.toml and source code for dependency installation
-COPY pyproject.toml .
-COPY setup.py .
+COPY pyproject-lightrag.toml .
+COPY setup-lightrag.py .
 COPY lightrag/ ./lightrag/
 
 # Install dependencies
@@ -43,7 +43,7 @@ RUN pip install --upgrade pip setuptools wheel
 # Copy only necessary files from builder
 COPY --from=builder /root/.local /root/.local
 COPY ./lightrag ./lightrag
-COPY setup.py .
+COPY setup-lightrag.py .
 
 RUN pip install --use-pep517 ".[api]"
 # Make sure scripts in .local are usable
