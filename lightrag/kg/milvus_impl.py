@@ -10,7 +10,7 @@ from ..kg.shared_storage import get_data_init_lock, get_storage_lock
 import pipmaster as pm
 
 if not pm.is_installed("pymilvus"):
-    pm.install("pymilvus==2.5.2")
+    pm.install("pymilvus>=2.6.2")
 
 import configparser
 from pymilvus import MilvusClient, DataType, CollectionSchema, FieldSchema  # type: ignore
@@ -1252,7 +1252,22 @@ class MilvusVectorDBStorage(BaseVectorStorage):
                 output_fields=output_fields,
             )
 
-            return result or []
+            if not result:
+                return []
+
+            result_map: dict[str, dict[str, Any]] = {}
+            for row in result:
+                if not row:
+                    continue
+                row_id = row.get("id")
+                if row_id is not None:
+                    result_map[str(row_id)] = row
+
+            ordered_results: list[dict[str, Any] | None] = []
+            for requested_id in ids:
+                ordered_results.append(result_map.get(str(requested_id)))
+
+            return ordered_results
         except Exception as e:
             logger.error(
                 f"[{self.workspace}] Error retrieving vector data for IDs {ids}: {e}"
