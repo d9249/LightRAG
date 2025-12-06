@@ -19,7 +19,7 @@ from ..base import (
 from ..utils import logger, compute_mdhash_id
 from ..types import KnowledgeGraph, KnowledgeGraphNode, KnowledgeGraphEdge
 from ..constants import GRAPH_FIELD_SEP
-from ..kg.shared_storage import get_data_init_lock, get_storage_lock, get_graph_db_lock
+from ..kg.shared_storage import get_data_init_lock
 
 import pipmaster as pm
 
@@ -120,7 +120,7 @@ class MongoKVStorage(BaseKVStorage):
         else:
             # When workspace is empty, final_namespace equals original namespace
             self.final_namespace = self.namespace
-            self.workspace = "_"
+            self.workspace = ""
             logger.debug(
                 f"[{self.workspace}] Final namespace (no workspace): '{self.namespace}'"
             )
@@ -138,11 +138,10 @@ class MongoKVStorage(BaseKVStorage):
             )
 
     async def finalize(self):
-        async with get_storage_lock():
-            if self.db is not None:
-                await ClientManager.release_client(self.db)
-                self.db = None
-                self._data = None
+        if self.db is not None:
+            await ClientManager.release_client(self.db)
+            self.db = None
+            self._data = None
 
     async def get_by_id(self, id: str) -> dict[str, Any] | None:
         # Unified handling for flattened keys
@@ -174,22 +173,6 @@ class MongoKVStorage(BaseKVStorage):
         cursor = self._data.find({"_id": {"$in": list(keys)}}, {"_id": 1})
         existing_ids = {str(x["_id"]) async for x in cursor}
         return keys - existing_ids
-
-    async def get_all(self) -> dict[str, Any]:
-        """Get all data from storage
-
-        Returns:
-            Dictionary containing all stored data
-        """
-        cursor = self._data.find({})
-        result = {}
-        async for doc in cursor:
-            doc_id = doc.pop("_id")
-            # Ensure time fields are present for all documents
-            doc.setdefault("create_time", 0)
-            doc.setdefault("update_time", 0)
-            result[doc_id] = doc
-        return result
 
     async def upsert(self, data: dict[str, dict[str, Any]]) -> None:
         logger.debug(f"[{self.workspace}] Inserting {len(data)} to {self.namespace}")
@@ -236,6 +219,20 @@ class MongoKVStorage(BaseKVStorage):
         # Mongo handles persistence automatically
         pass
 
+    async def is_empty(self) -> bool:
+        """Check if the storage is empty for the current workspace and namespace
+
+        Returns:
+            bool: True if storage is empty, False otherwise
+        """
+        try:
+            # Use count_documents with limit 1 for efficiency
+            count = await self._data.count_documents({}, limit=1)
+            return count == 0
+        except PyMongoError as e:
+            logger.error(f"[{self.workspace}] Error checking if storage is empty: {e}")
+            return True
+
     async def delete(self, ids: list[str]) -> None:
         """Delete documents with specified IDs
 
@@ -265,23 +262,22 @@ class MongoKVStorage(BaseKVStorage):
         Returns:
             dict[str, str]: Status of the operation with keys 'status' and 'message'
         """
-        async with get_storage_lock():
-            try:
-                result = await self._data.delete_many({})
-                deleted_count = result.deleted_count
+        try:
+            result = await self._data.delete_many({})
+            deleted_count = result.deleted_count
 
-                logger.info(
-                    f"[{self.workspace}] Dropped {deleted_count} documents from doc status {self._collection_name}"
-                )
-                return {
-                    "status": "success",
-                    "message": f"{deleted_count} documents dropped",
-                }
-            except PyMongoError as e:
-                logger.error(
-                    f"[{self.workspace}] Error dropping doc status {self._collection_name}: {e}"
-                )
-                return {"status": "error", "message": str(e)}
+            logger.info(
+                f"[{self.workspace}] Dropped {deleted_count} documents from doc status {self._collection_name}"
+            )
+            return {
+                "status": "success",
+                "message": f"{deleted_count} documents dropped",
+            }
+        except PyMongoError as e:
+            logger.error(
+                f"[{self.workspace}] Error dropping doc status {self._collection_name}: {e}"
+            )
+            return {"status": "error", "message": str(e)}
 
 
 @final
@@ -352,7 +348,7 @@ class MongoDocStatusStorage(DocStatusStorage):
         else:
             # When workspace is empty, final_namespace equals original namespace
             self.final_namespace = self.namespace
-            self.workspace = "_"
+            self.workspace = ""
             logger.debug(f"Final namespace (no workspace): '{self.final_namespace}'")
 
         self._collection_name = self.final_namespace
@@ -372,11 +368,10 @@ class MongoDocStatusStorage(DocStatusStorage):
             )
 
     async def finalize(self):
-        async with get_storage_lock():
-            if self.db is not None:
-                await ClientManager.release_client(self.db)
-                self.db = None
-                self._data = None
+        if self.db is not None:
+            await ClientManager.release_client(self.db)
+            self.db = None
+            self._data = None
 
     async def get_by_id(self, id: str) -> Union[dict[str, Any], None]:
         return await self._data.find_one({"_id": id})
@@ -466,29 +461,42 @@ class MongoDocStatusStorage(DocStatusStorage):
         # Mongo handles persistence automatically
         pass
 
+    async def is_empty(self) -> bool:
+        """Check if the storage is empty for the current workspace and namespace
+
+        Returns:
+            bool: True if storage is empty, False otherwise
+        """
+        try:
+            # Use count_documents with limit 1 for efficiency
+            count = await self._data.count_documents({}, limit=1)
+            return count == 0
+        except PyMongoError as e:
+            logger.error(f"[{self.workspace}] Error checking if storage is empty: {e}")
+            return True
+
     async def drop(self) -> dict[str, str]:
         """Drop the storage by removing all documents in the collection.
 
         Returns:
             dict[str, str]: Status of the operation with keys 'status' and 'message'
         """
-        async with get_storage_lock():
-            try:
-                result = await self._data.delete_many({})
-                deleted_count = result.deleted_count
+        try:
+            result = await self._data.delete_many({})
+            deleted_count = result.deleted_count
 
-                logger.info(
-                    f"[{self.workspace}] Dropped {deleted_count} documents from doc status {self._collection_name}"
-                )
-                return {
-                    "status": "success",
-                    "message": f"{deleted_count} documents dropped",
-                }
-            except PyMongoError as e:
-                logger.error(
-                    f"[{self.workspace}] Error dropping doc status {self._collection_name}: {e}"
-                )
-                return {"status": "error", "message": str(e)}
+            logger.info(
+                f"[{self.workspace}] Dropped {deleted_count} documents from doc status {self._collection_name}"
+            )
+            return {
+                "status": "success",
+                "message": f"{deleted_count} documents dropped",
+            }
+        except PyMongoError as e:
+            logger.error(
+                f"[{self.workspace}] Error dropping doc status {self._collection_name}: {e}"
+            )
+            return {"status": "error", "message": str(e)}
 
     async def delete(self, ids: list[str]) -> None:
         await self._data.delete_many({"_id": {"$in": ids}})
@@ -505,7 +513,7 @@ class MongoDocStatusStorage(DocStatusStorage):
             collation_config = {"locale": "zh", "numericOrdering": True}
 
             # Use workspace-specific index names to avoid cross-workspace conflicts
-            workspace_prefix = f"{self.workspace}_" if self.workspace != "_" else ""
+            workspace_prefix = f"{self.workspace}_" if self.workspace != "" else ""
 
             # 1. Define all indexes needed with workspace-specific names
             all_indexes = [
@@ -763,7 +771,7 @@ class MongoGraphStorage(BaseGraphStorage):
         else:
             # When workspace is empty, final_namespace equals original namespace
             self.final_namespace = self.namespace
-            self.workspace = "_"
+            self.workspace = ""
             logger.debug(f"Final namespace (no workspace): '{self.final_namespace}'")
 
         self._collection_name = self.final_namespace
@@ -789,12 +797,11 @@ class MongoGraphStorage(BaseGraphStorage):
             )
 
     async def finalize(self):
-        async with get_graph_db_lock():
-            if self.db is not None:
-                await ClientManager.release_client(self.db)
-                self.db = None
-                self.collection = None
-                self.edge_collection = None
+        if self.db is not None:
+            await ClientManager.release_client(self.db)
+            self.db = None
+            self.collection = None
+            self.edge_collection = None
 
     # Sample entity document
     # "source_ids" is Array representation of "source_id" split by GRAPH_FIELD_SEP
@@ -1023,45 +1030,6 @@ class MongoGraphStorage(BaseGraphStorage):
             result[target].append((source, target))
 
         return result
-
-    async def get_nodes_by_chunk_ids(self, chunk_ids: list[str]) -> list[dict]:
-        """Get all nodes that are associated with the given chunk_ids.
-
-        Args:
-            chunk_ids (list[str]): A list of chunk IDs to find associated nodes for.
-
-        Returns:
-            list[dict]: A list of nodes, where each node is a dictionary of its properties.
-                        An empty list if no matching nodes are found.
-        """
-        if not chunk_ids:
-            return []
-
-        cursor = self.collection.find({"source_ids": {"$in": chunk_ids}})
-        return [doc async for doc in cursor]
-
-    async def get_edges_by_chunk_ids(self, chunk_ids: list[str]) -> list[dict]:
-        """Get all edges that are associated with the given chunk_ids.
-
-        Args:
-            chunk_ids (list[str]): A list of chunk IDs to find associated edges for.
-
-        Returns:
-            list[dict]: A list of edges, where each edge is a dictionary of its properties.
-                        An empty list if no matching edges are found.
-        """
-        if not chunk_ids:
-            return []
-
-        cursor = self.edge_collection.find({"source_ids": {"$in": chunk_ids}})
-
-        edges = []
-        async for edge in cursor:
-            edge["source"] = edge["source_node_id"]
-            edge["target"] = edge["target_node_id"]
-            edges.append(edge)
-
-        return edges
 
     #
     # -------------------------------------------------------------------------
@@ -2042,30 +2010,29 @@ class MongoGraphStorage(BaseGraphStorage):
         Returns:
             dict[str, str]: Status of the operation with keys 'status' and 'message'
         """
-        async with get_graph_db_lock():
-            try:
-                result = await self.collection.delete_many({})
-                deleted_count = result.deleted_count
+        try:
+            result = await self.collection.delete_many({})
+            deleted_count = result.deleted_count
 
-                logger.info(
-                    f"[{self.workspace}] Dropped {deleted_count} documents from graph {self._collection_name}"
-                )
+            logger.info(
+                f"[{self.workspace}] Dropped {deleted_count} documents from graph {self._collection_name}"
+            )
 
-                result = await self.edge_collection.delete_many({})
-                edge_count = result.deleted_count
-                logger.info(
-                    f"[{self.workspace}] Dropped {edge_count} edges from graph {self._edge_collection_name}"
-                )
+            result = await self.edge_collection.delete_many({})
+            edge_count = result.deleted_count
+            logger.info(
+                f"[{self.workspace}] Dropped {edge_count} edges from graph {self._edge_collection_name}"
+            )
 
-                return {
-                    "status": "success",
-                    "message": f"{deleted_count} documents and {edge_count} edges dropped",
-                }
-            except PyMongoError as e:
-                logger.error(
-                    f"[{self.workspace}] Error dropping graph {self._collection_name}: {e}"
-                )
-                return {"status": "error", "message": str(e)}
+            return {
+                "status": "success",
+                "message": f"{deleted_count} documents and {edge_count} edges dropped",
+            }
+        except PyMongoError as e:
+            logger.error(
+                f"[{self.workspace}] Error dropping graph {self._collection_name}: {e}"
+            )
+            return {"status": "error", "message": str(e)}
 
 
 @final
@@ -2116,7 +2083,7 @@ class MongoVectorDBStorage(BaseVectorStorage):
         else:
             # When workspace is empty, final_namespace equals original namespace
             self.final_namespace = self.namespace
-            self.workspace = "_"
+            self.workspace = ""
             logger.debug(f"Final namespace (no workspace): '{self.final_namespace}'")
 
         # Set index name based on workspace for backward compatibility
@@ -2152,11 +2119,10 @@ class MongoVectorDBStorage(BaseVectorStorage):
             )
 
     async def finalize(self):
-        async with get_storage_lock():
-            if self.db is not None:
-                await ClientManager.release_client(self.db)
-                self.db = None
-                self._data = None
+        if self.db is not None:
+            await ClientManager.release_client(self.db)
+            self.db = None
+            self._data = None
 
     async def create_vector_index_if_not_exists(self):
         """Creates an Atlas Vector Search index."""
@@ -2479,27 +2445,26 @@ class MongoVectorDBStorage(BaseVectorStorage):
         Returns:
             dict[str, str]: Status of the operation with keys 'status' and 'message'
         """
-        async with get_storage_lock():
-            try:
-                # Delete all documents
-                result = await self._data.delete_many({})
-                deleted_count = result.deleted_count
+        try:
+            # Delete all documents
+            result = await self._data.delete_many({})
+            deleted_count = result.deleted_count
 
-                # Recreate vector index
-                await self.create_vector_index_if_not_exists()
+            # Recreate vector index
+            await self.create_vector_index_if_not_exists()
 
-                logger.info(
-                    f"[{self.workspace}] Dropped {deleted_count} documents from vector storage {self._collection_name} and recreated vector index"
-                )
-                return {
-                    "status": "success",
-                    "message": f"{deleted_count} documents dropped and vector index recreated",
-                }
-            except PyMongoError as e:
-                logger.error(
-                    f"[{self.workspace}] Error dropping vector storage {self._collection_name}: {e}"
-                )
-                return {"status": "error", "message": str(e)}
+            logger.info(
+                f"[{self.workspace}] Dropped {deleted_count} documents from vector storage {self._collection_name} and recreated vector index"
+            )
+            return {
+                "status": "success",
+                "message": f"{deleted_count} documents dropped and vector index recreated",
+            }
+        except PyMongoError as e:
+            logger.error(
+                f"[{self.workspace}] Error dropping vector storage {self._collection_name}: {e}"
+            )
+            return {"status": "error", "message": str(e)}
 
 
 async def get_or_create_collection(db: AsyncDatabase, collection_name: str):

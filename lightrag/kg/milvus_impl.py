@@ -6,7 +6,7 @@ import numpy as np
 from lightrag.utils import logger, compute_mdhash_id
 from ..base import BaseVectorStorage
 from ..constants import DEFAULT_MAX_FILE_PATH_LENGTH
-from ..kg.shared_storage import get_data_init_lock, get_storage_lock
+from ..kg.shared_storage import get_data_init_lock
 import pipmaster as pm
 
 if not pm.is_installed("pymilvus"):
@@ -462,14 +462,37 @@ class MilvusVectorDBStorage(BaseVectorStorage):
                 if type_name in ["FloatVector", "FLOAT_VECTOR"]:
                     existing_dimension = field.get("params", {}).get("dim")
 
-                    if existing_dimension != current_dimension:
+                    # Convert both to int for comparison to handle type mismatches
+                    # (Milvus API may return string "1024" vs int 1024)
+                    try:
+                        existing_dim_int = (
+                            int(existing_dimension)
+                            if existing_dimension is not None
+                            else None
+                        )
+                        current_dim_int = (
+                            int(current_dimension)
+                            if current_dimension is not None
+                            else None
+                        )
+                    except (TypeError, ValueError) as e:
+                        logger.error(
+                            f"[{self.workspace}] Failed to parse dimensions: existing={existing_dimension} (type={type(existing_dimension)}), "
+                            f"current={current_dimension} (type={type(current_dimension)}), error={e}"
+                        )
+                        raise ValueError(
+                            f"Invalid dimension values for collection '{self.final_namespace}': "
+                            f"existing={existing_dimension}, current={current_dimension}"
+                        ) from e
+
+                    if existing_dim_int != current_dim_int:
                         raise ValueError(
                             f"Vector dimension mismatch for collection '{self.final_namespace}': "
-                            f"existing={existing_dimension}, current={current_dimension}"
+                            f"existing={existing_dim_int}, current={current_dim_int}"
                         )
 
                     logger.debug(
-                        f"[{self.workspace}] Vector dimension check passed: {current_dimension}"
+                        f"[{self.workspace}] Vector dimension check passed: {current_dim_int}"
                     )
                     return
 
@@ -938,8 +961,8 @@ class MilvusVectorDBStorage(BaseVectorStorage):
         else:
             # When workspace is empty, final_namespace equals original namespace
             self.final_namespace = self.namespace
+            self.workspace = ""
             logger.debug(f"Final namespace (no workspace): '{self.final_namespace}'")
-            self.workspace = "_"
 
         kwargs = self.global_config.get("vector_db_storage_cls_kwargs", {})
         cosine_threshold = kwargs.get("cosine_better_than_threshold")
@@ -960,7 +983,7 @@ class MilvusVectorDBStorage(BaseVectorStorage):
 
     async def initialize(self):
         """Initialize Milvus collection"""
-        async with get_data_init_lock(enable_logging=True):
+        async with get_data_init_lock():
             if self._initialized:
                 return
 
@@ -1328,21 +1351,20 @@ class MilvusVectorDBStorage(BaseVectorStorage):
             - On success: {"status": "success", "message": "data dropped"}
             - On failure: {"status": "error", "message": "<error details>"}
         """
-        async with get_storage_lock():
-            try:
-                # Drop the collection and recreate it
-                if self._client.has_collection(self.final_namespace):
-                    self._client.drop_collection(self.final_namespace)
+        try:
+            # Drop the collection and recreate it
+            if self._client.has_collection(self.final_namespace):
+                self._client.drop_collection(self.final_namespace)
 
-                # Recreate the collection
-                self._create_collection_if_not_exist()
+            # Recreate the collection
+            self._create_collection_if_not_exist()
 
-                logger.info(
-                    f"[{self.workspace}] Process {os.getpid()} drop Milvus collection {self.namespace}"
-                )
-                return {"status": "success", "message": "data dropped"}
-            except Exception as e:
-                logger.error(
-                    f"[{self.workspace}] Error dropping Milvus collection {self.namespace}: {e}"
-                )
-                return {"status": "error", "message": str(e)}
+            logger.info(
+                f"[{self.workspace}] Process {os.getpid()} drop Milvus collection {self.namespace}"
+            )
+            return {"status": "success", "message": "data dropped"}
+        except Exception as e:
+            logger.error(
+                f"[{self.workspace}] Error dropping Milvus collection {self.namespace}: {e}"
+            )
+            return {"status": "error", "message": str(e)}

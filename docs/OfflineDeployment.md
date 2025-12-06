@@ -2,6 +2,10 @@
 
 This guide provides comprehensive instructions for deploying LightRAG in offline environments where internet access is limited or unavailable.
 
+If you deploy LightRAG using Docker, there is no need to refer to this document, as the LightRAG Docker image is pre-configured for offline operation.
+
+> Software packages requiring `transformers`, `torch`, or `cuda` will not be included in the offline dependency group. Consequently, document extraction tools such as Docling, as well as local LLM models like Hugging Face and LMDeploy, are outside the scope of offline installation support. These high-compute-resource-demanding services should not be integrated into LightRAG. Docling will be decoupled and deployed as a standalone service.
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -19,10 +23,11 @@ LightRAG uses dynamic package installation (`pipmaster`) for optional features b
 
 LightRAG dynamically installs packages for:
 
-- **Document Processing**: `docling`, `pypdf2`, `python-docx`, `python-pptx`, `openpyxl`
 - **Storage Backends**: `redis`, `neo4j`, `pymilvus`, `pymongo`, `asyncpg`, `qdrant-client`
 - **LLM Providers**: `openai`, `anthropic`, `ollama`, `zhipuai`, `aioboto3`, `voyageai`, `llama-index`, `lmdeploy`, `transformers`, `torch`
-- Tiktoken Models**: BPE encoding models downloaded from OpenAI CDN
+- **Tiktoken Models**: BPE encoding models downloaded from OpenAI CDN
+
+**Note**: Document processing dependencies (`pypdf`, `python-docx`, `python-pptx`, `openpyxl`) are now pre-installed with the `api` extras group and no longer require dynamic installation.
 
 ## Quick Start
 
@@ -71,30 +76,31 @@ LightRAG provides flexible dependency groups for different use cases:
 
 | Group | Description | Use Case |
 |-------|-------------|----------|
-| `offline-docs` | Document processing | PDF, DOCX, PPTX, XLSX files |
+| `api` | API server + document processing | FastAPI server with PDF, DOCX, PPTX, XLSX support |
 | `offline-storage` | Storage backends | Redis, Neo4j, MongoDB, PostgreSQL, etc. |
 | `offline-llm` | LLM providers | OpenAI, Anthropic, Ollama, etc. |
-| `offline` | All of the above | Complete offline deployment |
+| `offline` | Complete offline package | API + Storage + LLM (all features) |
+
+**Note**: Document processing (PDF, DOCX, PPTX, XLSX) is included in the `api` extras group. The previous `offline-docs` group has been merged into `api` for better integration.
+
+> Software packages requiring `transformers`, `torch`, or `cuda` will not be included in the offline dependency group.
 
 ### Installation Examples
 
 ```bash
-# Install only document processing dependencies
-pip install lightrag-hku[offline-docs]
+# Install API with document processing
+pip install lightrag-hku[api]
 
-# Install document processing and storage backends
-pip install lightrag-hku[offline-docs,offline-storage]
+# Install API and storage backends
+pip install lightrag-hku[api,offline-storage]
 
-# Install all offline dependencies
+# Install all offline dependencies (recommended for offline deployment)
 pip install lightrag-hku[offline]
 ```
 
 ### Using Individual Requirements Files
 
 ```bash
-# Document processing only
-pip install -r requirements-offline-docs.txt
-
 # Storage backends only
 pip install -r requirements-offline-storage.txt
 
@@ -238,8 +244,8 @@ ls -la ~/.tiktoken_cache/
 **Solution**:
 ```bash
 # Pre-install the specific package you need
-# For document processing:
-pip install lightrag-hku[offline-docs]
+# For API with document processing:
+pip install lightrag-hku[api]
 
 # For storage backends:
 pip install lightrag-hku[offline-storage]
@@ -291,9 +297,9 @@ mkdir -p ~/my_tiktoken_cache
 
 5. **Minimal Installation**: Only install what you need:
    ```bash
-   # If you only process PDFs with OpenAI
-   pip install lightrag-hku[offline-docs]
-   # Then manually add: pip install openai
+   # If you only need API with document processing
+   pip install lightrag-hku[api]
+   # Then manually add specific LLM: pip install openai
    ```
 
 ## Additional Resources
